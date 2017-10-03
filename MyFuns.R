@@ -354,7 +354,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   
   
   YELLOW <- F
-  flag <- 0
+  # flag <- 0
   k <- 2
   
   while(k <= maxsteps & lambs[k-1] > 0){
@@ -382,7 +382,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
           dd_add <- -sqrt(sig2 * log(n))
         }
         if (YELLOW == T) {
-          stop.index <- flag
+          stop.index <- k - 1
           break
         } else YELLOW <- T
       } else {
@@ -399,7 +399,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
           dd_add <- rep(sqrt(sig2 * log(n)),2)
         }
         YELLOW <- F
-        flag <- k
+        # flag <- k
       }
     if (sum(Gama_add %*% y2 > dd_add + btol)) stop('Impossible2~')
     Gama <- rbind(Gama, Gama_add)
@@ -522,16 +522,16 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
       }
     }
     k <- k + 1
-    # if (k==43) stop('check')
+    # if (k>=400) break
     if (!k%%30) print(k)
   }
 
   #trim
-  lambs <- lambs[1:stop.index]
-  U <- U[,1:stop.index, drop = F]
-  df <- df[1:stop.index]
-  h <- h[1:stop.index]
-  bic <- bic[1:stop.index]
+  lambs <- lambs[1:(k-1)]
+  U <- U[,1:(k-1), drop = F]
+  df <- df[1:(k-1)]
+  h <- h[1:(k-1)]
+  bic <- bic[1:(k-1)]
   
   fit <- y2 - t(D2) %*% U
   beta <- X_inv %*% fit
