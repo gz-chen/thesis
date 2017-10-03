@@ -354,6 +354,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   
   
   YELLOW <- F
+  flag <- 0
   k <- 2
   
   while(k <= maxsteps & lambs[k-1] > 0){
@@ -381,7 +382,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
           dd_add <- -sqrt(sig2 * log(n))
         }
         if (YELLOW == T) {
-          stop.index <- k - 2
+          stop.index <- flag
          break
         } else YELLOW <- T
       } else {
@@ -398,6 +399,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
           dd_add <- rep(sqrt(sig2 * log(n)),2)
         }
         YELLOW <- F
+        flag <- k - 1
       }
     if (sum(Gama_add %*% y2 > dd_add + btol)) stop('Impossible2~')
     Gama <- rbind(Gama, Gama_add)
