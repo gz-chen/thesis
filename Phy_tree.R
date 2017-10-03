@@ -125,7 +125,7 @@ assess_sparse(beta_esti, beta_true)
   num_ele_level <- sapply(level_beta, FUN = function(x) sum(approx_beta == x))
   ref_new <- which(level_beta == approx_beta[ref])
   
-  X_new <- sapply(level_beta, FUN = function(x) rowSums(X_cen[,approx_beta == x,drop = F]))
+  X_new <- sapply(level_beta, FUN = function(x) rowSums(model.data$X_cen[,approx_beta == x,drop = F]))
   X_new1 <- cbind(G_cen, X_new[,-ref_new])
   
   # lm4 <- lm(y_cen ~ G_cen + X_new[,-ref_new] + G_cen * X_new[,-ref_new])
