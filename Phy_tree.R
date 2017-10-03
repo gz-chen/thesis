@@ -43,7 +43,7 @@ beta_true <- true_beta(phy, CLS, gma)
 # 
 # lm3 <- lm(Data$y ~ Data$G + Data$X[,c(4:11,24:35)])
 # summary(lm3)
-# plot(lm3$coefficients )
+# plot(lm3$coefficients)
 
 
 
@@ -60,11 +60,12 @@ ref <- 1
 Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
 #generate data
 
-alp.values <- seq(0,1,by = 0.05)
-STOR <- list()
+# alp.values <- seq(0,1,by = 0.05)
+# STOR <- list()
 
-for (ii in 1:length(alp.values)) {
-    model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
+# for (ii in 1:length(alp.values)) 
+{
+    model.data <- data_prep(Data, DW, ref, alp = 0.3, normlz = F)
     
     G_cen <- model.data$G_cen
     y_cen <- model.data$y_cen
@@ -77,10 +78,10 @@ for (ii in 1:length(alp.values)) {
     # # res1$g_lasso$hit[1:10]
     # res1$stop_index
     # 
-    # 
     # plot_beta(beta_true, esti_beta(res1$g_lasso$beta[,res1$stop_index], ref), res1$bic)
     
     # plot_beta(beta_true, esti_beta(res1$g_lasso$beta[,114], ref), res1$bic)
+    #######################################
     
     ## my own function
     
@@ -89,17 +90,47 @@ for (ii in 1:length(alp.values)) {
     
     # summary of genlasso result
     beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
-    pdf(paste0('alp=',alp.values[ii],'.pdf'))
+    # pdf(paste0('alp=',alp.values[ii],'.pdf'))
     plot_beta(beta_true, beta_esti, res2$bic)
-    dev.off()
-    STOR[[ii]] <- list(alp = ii, beta_esti = beta_esti, stop = res2$stop.index, bic = res2$bic)
-    print(ii)
+    # dev.off()
+    # STOR[[ii]] <- list(alp = ii, beta_esti = beta_esti, stop = res2$stop.index, bic = res2$bic)
+    # print(ii)
 }
 
 
+NN <- 300
+correct <- 0
+P_val.norm <- matrix(nrow = NN, ncol = ncol(X_new1))
+P_val.chi <- numeric(NN)
 
-
-
+for (i in 1:NN) {
+  Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+  model.data <- data_prep(Data, DW, ref, alp = 0.3, normlz = F)
+  
+  G_cen <- model.data$G_cen
+  y_cen <- model.data$y_cen
+  X_cen1 <- model.data$X_cen1
+  D1 <- model.data$D1
+  
+  res <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
+  
+  beta_esti <- esti_beta(res$beta[,res$stop.index], ref)
+  fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
+  sparse <- assess_sparse(beta_esti, beta_true)
+  
+  if (!fuse_ass$nFPR & !sparse_ass$FPR & !fuse_ass$nFPR & !sparse_ass$FPR) {
+    correct <- correct + 1
+    for (j in 1:ncol(X_new1)){
+      eta <- ginv(X_new1)[j,]
+      P_val.norm[i,j] <- test_norm(y_cen, res2$gama, res2$dd, eta, res2$sig2)
+    }
+    
+    P_val.chi[i] <- test_chi(y_cen, res2$gama, res2$dd, P, res2$sig2)
+  } else {
+    P_val.chi[i] <- NA
+    P_val.norm[i,] <- NA
+  }
+}
 
 
 
@@ -125,7 +156,7 @@ assess_sparse(beta_esti, beta_true)
   num_ele_level <- sapply(level_beta, FUN = function(x) sum(approx_beta == x))
   ref_new <- which(level_beta == approx_beta[ref])
   
-  X_new <- sapply(level_beta, FUN = function(x) rowSums(X_cen[,approx_beta == x,drop = F]))
+  X_new <- sapply(level_beta, FUN = function(x) rowSums(model.data$X_cen[,approx_beta == x,drop = F]))
   X_new1 <- cbind(G_cen, X_new[,-ref_new])
   
   # lm4 <- lm(y_cen ~ G_cen + X_new[,-ref_new] + G_cen * X_new[,-ref_new])
@@ -142,19 +173,18 @@ assess_sparse(beta_esti, beta_true)
     p_values[j] <- test_norm(y_cen, res2$gama, res2$dd, eta, res2$sig2)
     # CIs[,j] <- test_norm(y_cen, res2$Gama, res2$dd, eta, res2$sig2, type = 'CI')
   }
-  level_beta
-  p_values
+  # level_beta
+  # p_values
   # CIs
 }
 
-# y <- y_cen; Gama <- res2$gama; dd <- res2$dd; sig2 <- res2$sig2; btol = 1e-7
+y <- y_cen; Gama <- res2$gama; dd <- res2$dd; sig2 <- res2$sig2; btol = 1e-7
 
 Intact <- G_cen * X_new[,-ref_new]
 Intact_cen <- t(t(Intact) - colMeans(Intact))
 P <- proj.mat(Intact_cen) %*% (diag(length(y_cen)) - proj.mat(X_new1))
 
 test_chi(y_cen, res2$gama, res2$dd, P, res2$sig2)
-
 
 
 

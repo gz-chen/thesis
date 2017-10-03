@@ -336,7 +336,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   bic[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
   B <- c(B,B_c[i_hit]) # must hit
   
-  change <- list(new = D2[B_c[i_hit],], Prj = temp$Prj, s = r_hit)
+  change <- list(new = D2[B_c[i_hit],], Prj = temp$Prj)
   
   B_c <- B_c[-i_hit]
   S <- c(S,r_hit)
@@ -481,7 +481,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
       uhat[B_c] <- a - hit*b
       U[,k] <- uhat
       
-      change <- list(new = D_1[i_hit,], Prj = temp$Prj, s = r_hit)
+      change <- list(new = D_1[i_hit,], Prj = temp$Prj)
       
       B <- c(B,B_c[i_hit])
       B_c <- B_c[-i_hit]
@@ -504,7 +504,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
       uhat[B_c] <- a - leave*b
       U[,k] <- uhat
       
-      change <- list(new = D_2[i_leave,], Prj = temp$Prj, s = S[i_leave])
+      change <- list(new = D_2[i_leave,], Prj = temp$Prj)
       
       B_c <- c(B_c, B[i_leave])
       B <- B[-i_leave]
@@ -541,6 +541,215 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
               U = U, df = df, h = h, bls = bls, bic = bic,
               stop.index = stop.index, Gama = Gama, gama = gama, dd = dd))
 }
+
+######
+# Another version without generating gamma matrix
+gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
+  svd_D <- function(A, b, rtol = 1e-7){
+    # A function to calculate inv(t(D2[B_c,]))
+    # A = t(D2[B_c,])
+    # inv(A) %*% b
+    # nullity(D2[B_c,]) = n - rank(t(D2[B_c,]))
+    svd.A <- svd(A)
+    d <- svd.A$d
+    r <- sum(d>rtol)
+    d <- d[1:r]
+    u <- svd.A$u[,1:r]; v <- svd.A$v[,1:r] # D_k <- u %*% d %*% t(v) is the condensed SVD
+    
+    x <- v %*% ((t(u)/d) %*% b)
+    # inv <- v %*% (t(u)/d)
+    Proj.D_k <- u %*% t(u)
+    return(list(x = x, Prj = Proj.D_k, r = r))
+  }
+  # some basic parameters
+  n <- length(y)
+  m <- nrow(D)
+  p <- ncol(D)
+  
+  # do some transformations
+  # reformulate the problem with general X as a signal approx. problem
+  x <- svd(X)
+  if (min(x$d) < rtol) stop('X does not have full col. rank!')
+  y2 <- as.numeric(x$u %*% (t(x$u) %*% y))
+  X_inv <- x$v %*% (t(x$u)/x$d)
+  D2 <- D %*% X_inv
+  bls <- y2
+  sig2 <- sum((y - y2)^2)/(n-p)
+  
+  # Intialize things to keep track of & return with
+  U <- matrix(nrow = m, ncol = maxsteps) # optimal dual variables at each step
+  lambs <- numeric(maxsteps) # knot values at each step
+  B <- NULL # boundary set
+  B_c <- seq(1:m) # interior set
+  S <- NULL # signs of coordinates in B
+  bic <- numeric(maxsteps) # adjusted bic at each step
+  df <- numeric(maxsteps) # df of the fit, i.e. nullity(D2[B_c,])
+  h <- logical(maxsteps) # whether hit or not
+
+  
+  ###########Begin!###########
+  
+  ##First step
+  temp <- svd_D(t(D2), y2)
+  U[,1] <- temp$x
+  i_hit <- which.max(abs(U[,1]))
+  r_hit <- sign(U[i_hit,1])
+  lambs[1] <- abs(U[i_hit,1])
+  h[1] <- T
+  df[1] <- n - temp$r
+  bic[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
+  B <- c(B,B_c[i_hit]) # must hit
+  
+  change <- list(new = D2[B_c[i_hit],], Prj = temp$Prj)
+  
+  B_c <- B_c[-i_hit]
+  S <- c(S,r_hit)
+  Ds <- D2[i_hit,] * S # vector t(D[B,]) %*% S
+  D_1 <- D2[-i_hit,,drop = F] # matrix D[B_c,]
+  D_2 <- D2[i_hit,,drop = F] # matrix D[B,]
+  
+  
+  
+  
+  YELLOW <- F
+  # flag <- 0
+  k <- 2
+  
+  while(k <= maxsteps & lambs[k-1] > 0){
+    
+    temp <- svd_D(t(D_1), cbind(y2,Ds), rtol = 1e-7)
+    
+    df[k] <- n - temp$r
+    
+    # decide when to quit loop based on BIC
+    if (df[k] == df[k-1]) {
+      bic[k] <- bic[k-1]
+    } else {
+      bic[k] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k], 3)
+      if (bic[k] > bic[k-1]) {
+        # bic is increasing
+        if (h[k-1]) {
+          vec <- as.vector((diag(n) - temp$Prj) %*% change$new)
+          norm.vec <- vec/sqrt(sum(vec^2))
+          Gama_add <- rbind(norm.vec,-norm.vec)
+          dd_add <- rep(sqrt(sig2 * log(n)),2)
+        } else {
+          vec <- as.vector((diag(n) - change$Prj) %*% change$new)
+          norm.vec <- vec/sqrt(sum(vec^2))
+          Gama_add <- -sign(c(norm.vec %*% y2)) * norm.vec
+          dd_add <- -sqrt(sig2 * log(n))
+        }
+        if (YELLOW == T) {
+          stop.index <- k - 1
+          break
+        } else YELLOW <- T
+      } else {
+        # bic is decreasing
+        if (h[k-1]) {
+          vec <- as.vector((diag(n) - temp$Prj) %*% change$new)
+          norm.vec <- vec/sqrt(sum(vec^2))
+          Gama_add <- -sign(c(norm.vec %*% y2)) * norm.vec
+          dd_add <- -sqrt(sig2 * log(n))
+        } else {
+          vec <- as.vector((diag(n) - change$Prj) %*% change$new)
+          norm.vec <- vec/sqrt(sum(vec^2))
+          Gama_add <- rbind(norm.vec,-norm.vec)
+          dd_add <- rep(sqrt(sig2 * log(n)),2)
+        }
+        YELLOW <- F
+        # flag <- k
+      }
+    }
+    
+    
+    # hitting times
+    a = as.numeric(temp$x[,1])
+    b = as.numeric(temp$x[,2])
+    
+    R <- sign(a)
+    
+    hits <- a/(R+b)
+    hits[hits > lambs[k-1] + btol] <- 0
+    hits[hits > lambs[k-1]] <- lambs[k-1]
+    
+    i_hit <- which.max(hits)
+    hit <- hits[i_hit]
+    r_hit <- R[i_hit]
+    
+    
+    
+    # leaving times
+    c <- S * (D_2 %*% (y2 - t(D_1) %*% a))
+    d <- S * (D_2 %*% (Ds - t(D_1) %*% b))
+    
+    leaves <- c/d
+    leaves[c > -btol] <- 0
+    leaves[leaves > lambs[k-1] + btol] <- 0
+    leaves[leaves > lambs[k-1]] <- lambs[k-1]
+    
+    i_leave <- which.max(leaves)
+    leave <- leaves[i_leave]
+    
+    # compare between hit and leave
+    if (hit > leave) {
+      lambs[k] <- hit
+      h[k] <- T
+      
+      uhat <- numeric(m)
+      uhat[B] <- hit*S
+      uhat[B_c] <- a - hit*b
+      U[,k] <- uhat
+      
+      change <- list(new = D_1[i_hit,], Prj = temp$Prj)
+      
+      B <- c(B,B_c[i_hit])
+      B_c <- B_c[-i_hit]
+      S <- c(S, r_hit)
+      
+      Ds <- Ds + D_1[i_hit,] * r_hit
+      D_2 <- rbind(D_2,D_1[i_hit,])
+      D_1 <- D_1[-i_hit,,drop = F]
+      
+    } else {
+      lambs[k] <- leave
+      h[k] <- F
+      uhat <- numeric(m)
+      uhat[B] <- leave*S
+      uhat[B_c] <- a - leave*b
+      U[,k] <- uhat
+      
+      change <- list(new = D_2[i_leave,], Prj = temp$Prj)
+      
+      B_c <- c(B_c, B[i_leave])
+      B <- B[-i_leave]
+      Ds <- Ds - D_2[i_leave,] * S[i_leave]
+      S <- S[-i_leave]
+      
+      D_1 <- rbind(D_1,D_2[i_leave,])
+      D_2 <- D_2[-i_leave,,drop = F]
+    }
+    k <- k + 1
+    # if (k>=400) break
+    if (!k%%30) print(k)
+  }
+  
+  #trim
+  lambs <- lambs[1:(k-1)]
+  U <- U[,1:(k-1), drop = F]
+  df <- df[1:(k-1)]
+  h <- h[1:(k-1)]
+  bic <- bic[1:(k-1)]
+  
+  fit <- y2 - t(D2) %*% U
+  beta <- X_inv %*% fit
+  
+  return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2,
+              U = U, df = df, h = h, bls = bls, bic = bic, stop.index = stop.index))
+}
+
+
+
+
 
 ######
 
@@ -596,14 +805,14 @@ assess_fuse <- function(tree, beta_esti, beta_true, ftol = 1e-6){
 #' @param beta_tru the true coefficient vector
 #' @param ftol the tolerent level for whether being 0
 #' @param ref the reference level
-#' @return FPR : False positive rate w.r.t internal nodes, positive means being nonzero;
-#'               This is analogous to Type I error with H_0: beta_i = 0, i.e. falsely nonzero/really zero
-#' @return FNR : False negative rate w.r.t. internal nodes, analogous to Type II error, falsely zero/really nonzero
+#' @return FPR : False positive rate w.r.t internal nodes, positive means being zero;
+#'               This is analogous to Type I error with H_0: beta_i != 0, i.e. falsely zero/really nonzero
+#' @return FNR : False negative rate w.r.t. internal nodes, analogous to Type II error, falsely nonzero/really zero
 assess_sparse <- function(beta_esti, beta_true, ftol = 1e-6){
   zeros <- abs(beta_true) <= ftol
   nonzeros <- !zeros
-  FPR <- sum(abs(beta_esti[zeros]) > ftol)/sum(zeros)
-  FNR <- sum(abs(beta_esti[nonzeros]) <= ftol)/sum(nonzeros)
+  FPR <- sum(abs(beta_esti[nonzeros]) <= ftol)/sum(nonzeros)
+  FNR <- sum(abs(beta_esti[zeros]) > ftol)/sum(zeros)
   return(list(FPR = FPR, FNR = FNR))
 }
 
@@ -693,7 +902,7 @@ test_chi <- function(y, Gama, dd, P, sig2, btol = 1e-7){
   V_up <- min(temp[alp > btol])
   V_lo <- max(c(temp[alp < -btol],0))
   if (Test.stat > V_up | Test.stat < V_lo) return('Impossible!')
-  p_val <- 1 - diff(pchisq(c(Test.stat^2,V_up^2), df = r))/diff(pchisq(c(V_lo^2,V_up^2), df = r))
+  p_val <- diff(pchisq(c(Test.stat^2,V_up^2), df = r))/diff(pchisq(c(V_lo^2,V_up^2), df = r))
   return(p_val)
 }
 
