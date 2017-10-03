@@ -89,9 +89,9 @@ for (ii in 1:length(alp.values)) {
     
     # summary of genlasso result
     beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
-    pdf(paste0('alp=',alp.values[ii],'.pdf'))
+    # pdf(paste0('alp=',alp.values[ii],'.pdf'))
     plot_beta(beta_true, beta_esti, res2$bic)
-    dev.off()
+    # dev.off()
     STOR[[ii]] <- list(alp = ii, beta_esti = beta_esti, stop = res2$stop.index, bic = res2$bic)
     print(ii)
 }

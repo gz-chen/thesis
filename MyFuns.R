@@ -383,7 +383,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
         }
         if (YELLOW == T) {
           stop.index <- flag
-         break
+          break
         } else YELLOW <- T
       } else {
         # bic is decreasing
@@ -399,7 +399,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
           dd_add <- rep(sqrt(sig2 * log(n)),2)
         }
         YELLOW <- F
-        flag <- k - 1
+        flag <- k
       }
     if (sum(Gama_add %*% y2 > dd_add + btol)) stop('Impossible2~')
     Gama <- rbind(Gama, Gama_add)
@@ -621,7 +621,7 @@ plot_beta <- function(beta_true, beta_esti, bic){
   plot(bic,main = 'The BIC plot')
   matplot(cbind(beta_esti,beta_true), col = c('black','red'), pch = c(1,2),
           ylab = 'beta',xlab = 'index', main = 'The coefficients')
-  legend(30, 1.5, c('Est.','True'), pch = c(1,2),col = c('black','red'))
+  legend(30, -0.5, c('Est.','True'), pch = c(1,2),col = c('black','red'))
   par(opar)
 }
 
