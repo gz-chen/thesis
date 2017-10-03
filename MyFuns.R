@@ -1,3 +1,17 @@
+rm(list = ls())
+#####
+if (!require('ape')) install.packages('ape')
+require('ape')
+if (!require('geiger')) install.packages('geiger')
+require(geiger)
+if (!require('adephylo')) install.packages('adephylo')
+require(adephylo)
+
+if (!require('genlasso')) install.packages('genlasso')
+require('genlasso')
+if (!require('truncnorm')) install.packages('truncnorm')
+require(truncnorm)
+
 #####
 
 # plot_tree: function used to plot my tree
