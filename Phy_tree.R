@@ -1,7 +1,4 @@
-rm(list = ls())
-require(ape)
-require(geiger)
-require(adephylo)
+
 
 
 
