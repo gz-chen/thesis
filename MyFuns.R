@@ -399,7 +399,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
           dd_add <- rep(sqrt(sig2 * log(n)),2)
         }
         YELLOW <- F
-        # flag <- k
+       # flag <- k
       }
     if (sum(Gama_add %*% y2 > dd_add + btol)) stop('Impossible2~')
     Gama <- rbind(Gama, Gama_add)
@@ -820,11 +820,11 @@ assess_sparse <- function(beta_esti, beta_true, ftol = 1e-6){
 
 #####
 
-# plot_beta : plot the bic and beta's
+# plot_beta_bic : plot the bic and beta's
 #' @param beta_true the true coefficient vector
 #' @param beta_esti the estimated coefficient vector
 #' @param bic the reference level
-plot_beta <- function(beta_true, beta_esti, bic){
+plot_beta_bic <- function(beta_true, beta_esti, bic){
   opar <- par(no.readonly = T)
   par(mfrow = c(1,2))
   plot(bic,main = 'The BIC plot')
@@ -833,6 +833,7 @@ plot_beta <- function(beta_true, beta_esti, bic){
   legend(30, -0.5, c('Est.','True'), pch = c(1,2),col = c('black','red'))
   par(opar)
 }
+
 
 #####
 # esti_beta : recover the full coef vec from the reference-level omitted version

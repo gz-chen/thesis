@@ -1,3 +1,5 @@
+setwd('/Users/gzchen/Documents/GitHub/thesis')
+source('MyFuns.R')
 ##########################
 ######generate tree#######
 
@@ -57,15 +59,18 @@ DW <- gen_D(phy, m = 2, weight = 'max', type = 'myown')
 ref <- 1
 
 ##
-Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+
 #generate data
 
-# alp.values <- seq(0,1,by = 0.05)
-# STOR <- list()
+alp.values <- seq(0.2, 0.46,by = 0.02)
+NN <- 10
+STOR <- list()
 
-# for (ii in 1:length(alp.values)) 
-{
-    model.data <- data_prep(Data, DW, ref, alp = 0.3, normlz = F)
+for (ii in 1:length(alp.values)) {
+  temp <- matrix(nrow = 4, ncol = NN)
+  for (i in 1:NN){
+    Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+    model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
     
     G_cen <- model.data$G_cen
     y_cen <- model.data$y_cen
@@ -78,77 +83,30 @@ Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig 
     # # res1$g_lasso$hit[1:10]
     # res1$stop_index
     # 
-    # plot_beta(beta_true, esti_beta(res1$g_lasso$beta[,res1$stop_index], ref), res1$bic)
+    # plot_beta_bic(beta_true, esti_beta(res1$g_lasso$beta[,res1$stop_index], ref), res1$bic)
     
-    # plot_beta(beta_true, esti_beta(res1$g_lasso$beta[,114], ref), res1$bic)
+    # plot_beta_bic(beta_true, esti_beta(res1$g_lasso$beta[,114], ref), res1$bic)
     #######################################
     
     ## my own function
     
-    res2 <- gen_select(y_cen, X_cen1, D1, btol = 1e-6)
-    res2$stop.index
+    res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
+    # res2$stop.index
     
     # summary of genlasso result
     beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
-    # pdf(paste0('alp=',alp.values[ii],'.pdf'))
-    plot_beta(beta_true, beta_esti, res2$bic)
-    # dev.off()
-    # STOR[[ii]] <- list(alp = ii, beta_esti = beta_esti, stop = res2$stop.index, bic = res2$bic)
-    # print(ii)
-}
-
-
-NN <- 300
-correct <- 0
-P_val.norm <- matrix(nrow = NN, ncol = ncol(X_new1))
-P_val.chi <- numeric(NN)
-
-for (i in 1:NN) {
-  Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
-  model.data <- data_prep(Data, DW, ref, alp = 0.3, normlz = F)
-  
-  G_cen <- model.data$G_cen
-  y_cen <- model.data$y_cen
-  X_cen1 <- model.data$X_cen1
-  D1 <- model.data$D1
-  
-  res <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
-  
-  beta_esti <- esti_beta(res$beta[,res$stop.index], ref)
-  fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
-  sparse <- assess_sparse(beta_esti, beta_true)
-  
-  if (!fuse_ass$nFPR & !sparse_ass$FPR & !fuse_ass$nFPR & !sparse_ass$FPR) {
-    correct <- correct + 1
-    for (j in 1:ncol(X_new1)){
-      eta <- ginv(X_new1)[j,]
-      P_val.norm[i,j] <- test_norm(y_cen, res2$gama, res2$dd, eta, res2$sig2)
-    }
-    
-    P_val.chi[i] <- test_chi(y_cen, res2$gama, res2$dd, P, res2$sig2)
-  } else {
-    P_val.chi[i] <- NA
-    P_val.norm[i,] <- NA
+    # plot_beta_bic(beta_true, esti_beta(res2$beta[,160], ref), res2$bic)
+    # plot_beta_bic(beta_true, beta_esti, res2$bic)
+    fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
+    sparse_ass <- assess_sparse(beta_esti, beta_true)
+    temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR)
+    print(paste0('i=',i,' done'))
   }
+  STOR[[ii]] <- temp
+  print(paste0('ii=',ii,' done'))
 }
 
-
-
-
-# plot_beta(beta_true, esti_beta(res2$beta[,100], ref), res2$bic)
-
-############################################
-######### model assessment #################
-
-assess_fuse(phy, beta_esti, beta_true)
-
-assess_sparse(beta_esti, beta_true)
-
-
-###########################################
-########## model reference step ###########
-
-# reform new design matrix and reference level
+##########################################################################
 {
   rdig <- 6
   approx_beta <- round(beta_esti, rdig)
@@ -185,6 +143,62 @@ Intact_cen <- t(t(Intact) - colMeans(Intact))
 P <- proj.mat(Intact_cen) %*% (diag(length(y_cen)) - proj.mat(X_new1))
 
 test_chi(y_cen, res2$gama, res2$dd, P, res2$sig2)
+
+
+#########################check selective type I error#####
+
+NN <- 300
+correct <- 0
+P_val.norm <- matrix(nrow = NN, ncol = ncol(X_new1))
+P_val.chi <- numeric(NN)
+
+for (i in 1:NN) {
+  Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+  model.data <- data_prep(Data, DW, ref, alp = 0.3, normlz = F)
+  
+  G_cen <- model.data$G_cen
+  y_cen <- model.data$y_cen
+  X_cen1 <- model.data$X_cen1
+  D1 <- model.data$D1
+  
+  res <- gen_select(y_cen, X_cen1, D1, btol = 1e-6)
+  
+  beta_esti <- esti_beta(res$beta[,res$stop.index], ref)
+  fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
+  sparse_ass <- assess_sparse(beta_esti, beta_true)
+  
+  if (!fuse_ass$nFPR & !sparse_ass$FPR & !fuse_ass$nFPR & !sparse_ass$FPR) {
+    correct <- correct + 1
+    for (j in 1:ncol(X_new1)){
+      eta <- ginv(X_new1)[j,]
+      P_val.norm[i,j] <- test_norm(y_cen, res$gama, res$dd, eta, res$sig2)
+    }
+    
+    P_val.chi[i] <- test_chi(y_cen, res$gama, res$dd, P, res$sig2)
+  } else {
+    P_val.chi[i] <- NA
+    P_val.norm[i,] <- NA
+  }
+}
+
+
+
+
+# plot_beta_bic(beta_true, esti_beta(res2$beta[,100], ref), res2$bic)
+
+############################################
+######### model assessment #################
+
+assess_fuse(phy, beta_esti, beta_true)
+
+assess_sparse(beta_esti, beta_true)
+
+
+###########################################
+########## model reference step ###########
+
+# reform new design matrix and reference level
+
 
 
 
