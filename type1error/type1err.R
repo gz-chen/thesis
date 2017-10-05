@@ -47,14 +47,14 @@ P_val.chi <- numeric(NN)
 
 for (i in 1:NN) {
   Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
-  model.data <- data_prep(Data, DW, ref, alp = 0.3, normlz = F)
+  model.data <- data_prep(Data, DW, ref, alp = 0.26, normlz = F)
   
   G_cen <- model.data$G_cen
   y_cen <- model.data$y_cen
   X_cen1 <- model.data$X_cen1
   D1 <- model.data$D1
   # model
-  res <- gen_select(y_cen, X_cen1, D1, btol = 1e-6)
+  res <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
   # model result and assessment
   beta_esti <- esti_beta(res$beta[,res$stop.index], ref)
   fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
@@ -79,12 +79,13 @@ for (i in 1:NN) {
     #   eta <- ginv(X_new1)[j,]
     #   P_val.norm[i,j] <- test_norm(y_cen, res$gama, res$dd, eta, res$sig2)
     # }
-    P_val.chi[i] <- test_chi(y_cen, res$gama, res$dd, P, res$sig2)
+    # P_val.chi[i] <- test_chi(y_cen, res$gama, res$dd, P, res$sig2)
+    P_val.chi[i] <- test_chi2(y_cen, P, res$sig2)
   } else {
     P_val.chi[i] <- NA
     # P_val.norm[i,] <- NA
   }
-  if (i == 2) break
+  # if (i == 2) break
 }
 # plot_beta_bic(beta_true, beta_esti, res$bic)
 

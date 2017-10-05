@@ -910,6 +910,17 @@ test_chi <- function(y, Gama, dd, P, sig2, btol = 1e-7){
 
 #####
 
+test_chi2 <- function(y, P, sig2){
+  r <- sum(diag(P))
+  R <- c(P %*% y)
+  R.norm2 <- sum(R^2)
+  Test.stat <- R.norm2/sig2
+
+  p_val <- 1 - pchisq(Test.stat, df = r)
+  return(p_val)
+}
+
+
 # proj.mat calculates the projection matrix onto the columns of a matrix
 proj.mat <- function(A, rtol = 1e-7){
   svd.A <- svd(A)
