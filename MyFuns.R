@@ -854,11 +854,12 @@ esti_beta <- function(beta_est, ref) append(beta_est, 0, after = ref-1)
 #' @return p-value if type == 'test'; OR a confidence interval if type == 'CI'
 test_norm <- function(y, Gama, dd, eta, sig2, type = 'test', lsig = 0.05, btol = 1e-7){
   # compute the lower and upper boundary
+  y <- c(y)
   alp <- c(Gama %*% eta) / sum(eta^2)
   temp <- (dd - Gama %*% y + alp * c(eta %*% y)) / alp
   V_up <- min(temp[alp > btol])
   V_lo <- max(temp[alp < -btol])
-  if (V_lo >= V_up) stop('Lower bound is larger than the upper bound!')
+  if (V_lo >= V_up) return(99)
   # testing whether eta^t mu == 0
   require(truncnorm)
   if (type == 'test'){
@@ -875,6 +876,14 @@ test_norm <- function(y, Gama, dd, eta, sig2, type = 'test', lsig = 0.05, btol =
   }
 }
 
+######
+
+test_norm2 <- function(y, eta, sig2){
+  y <- c(y)
+  Test.stat <- c(y %*% eta) / sqrt(sig2 * sum(eta^2))
+  p_val <- pnorm(Test.stat, 0, 1)
+  return(2 * min(p_val, 1 - p_val))
+}
 
 
 ######
@@ -888,9 +897,8 @@ test_norm <- function(y, Gama, dd, eta, sig2, type = 'test', lsig = 0.05, btol =
 #' @param sig2 the estimate of error variance
 #' @return the p-value
 
-
-
 test_chi <- function(y, Gama, dd, P, sig2, btol = 1e-7){
+  y <- c(y)
   r <- sum(diag(P))
   R <- P %*% y
   R.norm <- sqrt(sum(R^2))
@@ -902,7 +910,7 @@ test_chi <- function(y, Gama, dd, P, sig2, btol = 1e-7){
   temp <- (dd - Gama %*% v)/alp
   V_up <- min(temp[alp > btol])
   V_lo <- max(c(temp[alp < -btol],0))
-  if (Test.stat > V_up | Test.stat < V_lo) return('Impossible!')
+  if (Test.stat > V_up | Test.stat < V_lo) return(99)
   p_val <- diff(pchisq(c(Test.stat^2,V_up^2), df = r))/diff(pchisq(c(V_lo^2,V_up^2), df = r))
   return(p_val)
 }
@@ -911,6 +919,7 @@ test_chi <- function(y, Gama, dd, P, sig2, btol = 1e-7){
 #####
 
 test_chi2 <- function(y, P, sig2){
+  y <- c(y)
   r <- sum(diag(P))
   R <- c(P %*% y)
   R.norm2 <- sum(R^2)
