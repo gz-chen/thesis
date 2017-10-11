@@ -14,7 +14,7 @@ phy$tip.label <- 1:p
 ######Define clusters & plot tree########
 
 #define the associated clusters by the highest internal node
-CLS <- c(98,77)
+CLS <- c(56,75)
 
 asso_tips <- plot_tree(phy, cls = CLS)
 
@@ -34,7 +34,7 @@ beta_true <- true_beta(phy, CLS, gma)
 
 ####################################################
 ## some checks for fun
-Data <- gen_dat(n = 500, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+Data <- gen_dat(n = 5000, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
 lm1 <- lm(Data$y ~ Data$G + Data$Z)
 gma #true parameters
 summary(lm1) #run lm to see whether it yields the coef and std. error and R.squared desired
@@ -62,12 +62,12 @@ ref <- 1
 
 #generate data
 
-alp.values <- seq(0, 1, by = 0.05)
-NN <- 10
+alp.values <- seq(0.2, 0.5, by = 0.02)
+NN <- 100
 STOR <- list()
 
 for (ii in 1:length(alp.values)) {
-  temp <- matrix(nrow = 4, ncol = NN)
+  temp <- matrix(nrow = 5, ncol = NN)
   for (i in 1:NN){
     Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
     model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
@@ -99,7 +99,7 @@ for (ii in 1:length(alp.values)) {
     # plot_beta_bic(beta_true, beta_esti, res2$bic)
     fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
     sparse_ass <- assess_sparse(beta_esti, beta_true)
-    temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR)
+    temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic[res2$stop.index])
     print(paste0('i=',i,' done'))
   }
   STOR[[ii]] <- temp
