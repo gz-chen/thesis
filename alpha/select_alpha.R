@@ -1,4 +1,7 @@
-setwd('/Users/gzchen/Documents/GitHub/thesis')
+this.dir <- dirname(parent.frame(2)$ofile)
+setwd(this.dir)
+#setwd('/Users/gzchen/Documents/GitHub/thesis')
+print(this.dir)
 source('MyFuns.R')
 ##########################
 ######generate tree#######
