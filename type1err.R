@@ -96,7 +96,7 @@ for (i in 1:NN) {
       } else {
         P_val.norm.nonzero1 <- c(P_val.norm.nonzero1, test_norm(y_cen, res$gama, res$dd, eta, res$sig2))
         P_val.norm.nonzero2 <- c(P_val.norm.nonzero2, test_norm2(y_cen, eta, res$sig2))
-        if (length(P_val.norm.nonzero1) != length(P_val.norm.nonzero2)) break
+        # if (length(P_val.norm.nonzero1) != length(P_val.norm.nonzero2)) break
       }
     }
     
