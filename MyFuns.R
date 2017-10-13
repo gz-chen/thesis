@@ -401,9 +401,9 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
         YELLOW <- F
        # flag <- k
       }
-    if (sum(Gama_add %*% y2 > dd_add + btol)) stop('Impossible2~')
-    Gama <- rbind(Gama, Gama_add)
-    dd <- c(dd,dd_add)
+    # if (sum(Gama_add %*% y2 > dd_add + btol)) stop('Impossible2~')
+    # Gama <- rbind(Gama, Gama_add)
+    # dd <- c(dd,dd_add)
     }
     
     
@@ -583,6 +583,8 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   B_c <- seq(1:m) # interior set
   S <- NULL # signs of coordinates in B
   bic <- numeric(maxsteps) # adjusted bic at each step
+  # bic_c2 <- numeric(maxsteps)
+  bic_n <- numeric(maxsteps)
   df <- numeric(maxsteps) # df of the fit, i.e. nullity(D2[B_c,])
   h <- logical(maxsteps) # whether hit or not
 
@@ -598,9 +600,11 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   h[1] <- T
   df[1] <- n - temp$r
   bic[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
+  # bic_c2[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
+  bic_n[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1])
   B <- c(B,B_c[i_hit]) # must hit
   
-  change <- list(new = D2[B_c[i_hit],], Prj = temp$Prj)
+  # change <- list(new = D2[B_c[i_hit],], Prj = temp$Prj)
   
   B_c <- B_c[-i_hit]
   S <- c(S,r_hit)
@@ -612,7 +616,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   
   
   YELLOW <- F
-  # flag <- 0
+  flag <- 0
   k <- 2
   
   while(k <= maxsteps & lambs[k-1] > 0){
@@ -626,39 +630,17 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
       bic[k] <- bic[k-1]
     } else {
       bic[k] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k], 3)
-      if (bic[k] > bic[k-1]) {
-        # bic is increasing
-        if (h[k-1]) {
-          vec <- as.vector((diag(n) - temp$Prj) %*% change$new)
-          norm.vec <- vec/sqrt(sum(vec^2))
-          Gama_add <- rbind(norm.vec,-norm.vec)
-          dd_add <- rep(sqrt(sig2 * log(n)),2)
-        } else {
-          vec <- as.vector((diag(n) - change$Prj) %*% change$new)
-          norm.vec <- vec/sqrt(sum(vec^2))
-          Gama_add <- -sign(c(norm.vec %*% y2)) * norm.vec
-          dd_add <- -sqrt(sig2 * log(n))
-        }
-        if (YELLOW == T) {
-          stop.index <- k - 1
-          break
-        } else YELLOW <- T
-      } else {
-        # bic is decreasing
-        if (h[k-1]) {
-          vec <- as.vector((diag(n) - temp$Prj) %*% change$new)
-          norm.vec <- vec/sqrt(sum(vec^2))
-          Gama_add <- -sign(c(norm.vec %*% y2)) * norm.vec
-          dd_add <- -sqrt(sig2 * log(n))
-        } else {
-          vec <- as.vector((diag(n) - change$Prj) %*% change$new)
-          norm.vec <- vec/sqrt(sum(vec^2))
-          Gama_add <- rbind(norm.vec,-norm.vec)
-          dd_add <- rep(sqrt(sig2 * log(n)),2)
-        }
-        YELLOW <- F
-        # flag <- k
-      }
+      # if (bic[k] > bic[k-1]) {
+      #   # bic is increasing
+      #   if (YELLOW == T) {
+      #     stop.index <- flag
+      #     # break
+      #   } else YELLOW <- T
+      # } else {
+      #   # bic is decreasing
+      #   YELLOW <- F
+      #   flag <- k
+      # }
     }
     
     
@@ -693,6 +675,8 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
     # compare between hit and leave
     if (hit > leave) {
       lambs[k] <- hit
+      # bic_c2[k] <- round(sum((temp$Prj %*% y2 + hit * (diag(n) - temp$Prj) %*% Ds)^2) + log(n) * sig2 * df[k], 3)
+      
       h[k] <- T
       
       uhat <- numeric(m)
@@ -700,25 +684,27 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
       uhat[B_c] <- a - hit*b
       U[,k] <- uhat
       
-      change <- list(new = D_1[i_hit,], Prj = temp$Prj)
+      bic_n[k] <- round(sum((t(D2) %*% uhat)^2) + log(n) * sig2 * df[k])
       
       B <- c(B,B_c[i_hit])
       B_c <- B_c[-i_hit]
+      Ds <- Ds + D_1[i_hit,] * r_hit
       S <- c(S, r_hit)
       
-      Ds <- Ds + D_1[i_hit,] * r_hit
       D_2 <- rbind(D_2,D_1[i_hit,])
       D_1 <- D_1[-i_hit,,drop = F]
       
     } else {
       lambs[k] <- leave
+      # bic_c2[k] <- round(sum((temp$Prj %*% y2 + leave * (diag(n) - temp$Prj) %*% Ds)^2) + log(n) * sig2 * df[k], 3)
+      
       h[k] <- F
       uhat <- numeric(m)
       uhat[B] <- leave*S
       uhat[B_c] <- a - leave*b
       U[,k] <- uhat
       
-      change <- list(new = D_2[i_leave,], Prj = temp$Prj)
+      bic_n[k] <- round(sum((t(D2) %*% uhat)^2) + log(n) * sig2 * df[k])
       
       B_c <- c(B_c, B[i_leave])
       B <- B[-i_leave]
@@ -728,8 +714,23 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
       D_1 <- rbind(D_1,D_2[i_leave,])
       D_2 <- D_2[-i_leave,,drop = F]
     }
+    # decide whether to stop
+    if (bic_n[k] > bic_n[k-1]) {
+      # bic is increasing
+      if (YELLOW == T) {
+        stop.index <- flag
+        break
+      } else YELLOW <- T
+    } else if (bic_n[k] < bic_n[k-1]){
+      # bic is decreasing
+      YELLOW <- F
+      flag <- k
+    }
+    
+    
+    
     k <- k + 1
-    # if (k>=400) break
+    if (k>=60) break
     if (!k%%30) print(k)
   }
   
@@ -739,11 +740,18 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   df <- df[1:(k-1)]
   h <- h[1:(k-1)]
   bic <- bic[1:(k-1)]
+  # bic_c2 <- bic_c2[1:(k-1)]
+  bic_n <- bic_n[1:(k-1)]
   
   fit <- y2 - t(D2) %*% U
   beta <- X_inv %*% fit
   
-  return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2,
+  # sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k]
+  bic_c <- colSums((c(y2) - fit)^2) + log(n) * sig2 * df
+  
+    
+  
+  return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2, bic_c = bic_c, bic_n = bic_n,
               U = U, df = df, h = h, bls = bls, bic = bic, stop.index = stop.index))
 }
 

@@ -1,5 +1,6 @@
 this.dir <- dirname(parent.frame(2)$ofile)
 setwd(this.dir)
+#setwd('/Users/gzchen/Documents/GitHub/thesis')
 source('MyFuns.R')
 ##########################
 ######generate tree#######
@@ -109,10 +110,11 @@ for (i in 1:NN) {
     P_val.chi2 <- c(P_val.chi2, test_chi2(y_cen, P, res$sig2))
   }
   print(paste0('i=',i,'done'))
+  if (i == 1) break
 }
 
 
-save.image('type1err.RData')
+# save.image('type1err.RData')
 
 
 

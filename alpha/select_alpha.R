@@ -1,7 +1,6 @@
 this.dir <- dirname(parent.frame(2)$ofile)
 setwd(this.dir)
 #setwd('/Users/gzchen/Documents/GitHub/thesis')
-print(this.dir)
 source('MyFuns.R')
 ##########################
 ######generate tree#######
@@ -37,10 +36,10 @@ beta_true <- true_beta(phy, CLS, gma)
 
 ####################################################
 ## some checks for fun
-Data <- gen_dat(n = 5000, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
-lm1 <- lm(Data$y ~ Data$G + Data$Z)
-gma #true parameters
-summary(lm1) #run lm to see whether it yields the coef and std. error and R.squared desired
+# Data <- gen_dat(n = 5000, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+# lm1 <- lm(Data$y ~ Data$G + Data$Z)
+# gma #true parameters
+# summary(lm1) #run lm to see whether it yields the coef and std. error and R.squared desired
 # 
 # lm2 <- lm(Data$y ~ Data$G + Data$X[,-1])
 # plot(lm2$coefficients) # no sparsity or fusion pattern shown
@@ -57,13 +56,13 @@ summary(lm1) #run lm to see whether it yields the coef and std. error and R.squa
 
 
 # generate penalty matrix
-DW <- gen_D(phy, m = 2, weight = 'max', type = 'myown')
+DW <- gen_D(phy, m = 2, weight = 'max', type = 'wang1')
 # data prep. for pen. reg.
 ref <- 1
 
 ##
 
-#generate data
+# generate data
 
 alp.values <- seq(0.2, 0.5, by = 0.02)
 NN <- 100
@@ -72,7 +71,7 @@ STOR <- list()
 for (ii in 1:length(alp.values)) {
   temp <- matrix(nrow = 5, ncol = NN)
   for (i in 1:NN){
-    Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+    Data <- gen_dat(n = 500, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
     model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
     
     G_cen <- model.data$G_cen
@@ -102,7 +101,7 @@ for (ii in 1:length(alp.values)) {
     # plot_beta_bic(beta_true, beta_esti, res2$bic)
     fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
     sparse_ass <- assess_sparse(beta_esti, beta_true)
-    temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic[res2$stop.index])
+    temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic_n[res2$stop.index])
     print(paste0('i=',i,' done'))
   }
   STOR[[ii]] <- temp
