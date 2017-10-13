@@ -544,7 +544,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
 
 ######
 # Another version without generating gamma matrix
-gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.stop = 100){
+gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.stop = 500){
   svd_D <- function(A, b, rtol = 1e-7){
     # A function to calculate inv(t(D2[B_c,]))
     # A = t(D2[B_c,])
