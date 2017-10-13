@@ -50,8 +50,9 @@ for (i in 1:NN){
     X_cen1 <- model.data$X_cen1
     D1 <- model.data$D1
     
-    res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
+    res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6, k.stop = 50)
     beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
+    plot_beta_bic(beta_true, beta_esti, res2$bic_n)
     
     fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
     sparse_ass <- assess_sparse(beta_esti, beta_true)

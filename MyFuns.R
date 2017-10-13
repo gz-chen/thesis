@@ -544,7 +544,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
 
 ######
 # Another version without generating gamma matrix
-gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
+gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.stop = 100){
   svd_D <- function(A, b, rtol = 1e-7){
     # A function to calculate inv(t(D2[B_c,]))
     # A = t(D2[B_c,])
@@ -616,7 +616,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   
   
   YELLOW <- F
-  flag <- 0
+  flag <- 1
   k <- 2
   
   while(k <= maxsteps & lambs[k-1] > 0){
@@ -728,9 +728,8 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
     }
     
     
-    
     k <- k + 1
-    # if (k>=60) break
+    if (k>k.stop) break
     if (!k%%30) print(k)
   }
   
@@ -749,7 +748,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   # sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k]
   bic_c <- colSums((c(y2) - fit)^2) + log(n) * sig2 * df
   
-    
+  # stop.index <- which.min(bic_c)
   
   return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2, bic_c = bic_c, bic_n = bic_n,
               U = U, df = df, h = h, bls = bls, bic = bic, stop.index = stop.index))
