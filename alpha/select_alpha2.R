@@ -55,11 +55,11 @@ for (i in 1:NN){
     
     fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
     sparse_ass <- assess_sparse(beta_esti, beta_true)
-    temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic_n[res2$stop.index])
-    print(paste0('i=',i,' done'))
+    temp[,ii] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic_n[res2$stop.index])
+    print(paste0('ii=',ii,' done'))
   }
-  STOR[[ii]] <- temp
-  print(paste0('ii=',ii,' done'))
+  STOR[[i]] <- temp
+  print(paste0('i=',i,' done'))
 }
 
 

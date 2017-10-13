@@ -730,7 +730,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
     
     
     k <- k + 1
-    if (k>=60) break
+    # if (k>=60) break
     if (!k%%30) print(k)
   }
   
