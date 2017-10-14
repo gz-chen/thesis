@@ -29,7 +29,7 @@ beta_true <- true_beta(phy, CLS, gma)
 
 
 # generate penalty matrix
-DW <- gen_D(phy, m = 2, weight = 'max', type = 'wang1')
+# DW <- gen_D(phy, m = 2, weight = 'max', type = 'myown')
 # data prep. for pen. reg.
 ref <- 1
 
@@ -39,28 +39,35 @@ alp.values <- seq(0, 1, by = 0.05)
 NN <- 50
 STOR <- list()
 pp <- length(alp.values)
+mtd <- c('myown','wang1')
 
 for (i in 1:NN){
   temp <- matrix(nrow = 5, ncol = pp)
-  Data <- gen_dat(n = 500, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
-  for (ii in 1:pp) {
-    model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
-    G_cen <- model.data$G_cen
-    y_cen <- model.data$y_cen
-    X_cen1 <- model.data$X_cen1
-    D1 <- model.data$D1
-    
-    res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
-    beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
-    # plot_beta_bic(beta_true, beta_esti, res2$bic_n)
-    
-    fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
-    sparse_ass <- assess_sparse(beta_esti, beta_true)
-    temp[,ii] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic_n[res2$stop.index])
-    print(paste0('ii=',ii,' done'))
+  Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+  STOR[[i]] <- list()
+  for (j in 1:2){
+    DW <- gen_D(phy, m = 2, weight = 'max', type = mtd[j])
+    for (ii in 1:pp) {
+      model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
+      G_cen <- model.data$G_cen
+      y_cen <- model.data$y_cen
+      X_cen1 <- model.data$X_cen1
+      D1 <- model.data$D1
+      
+      res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
+      beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
+      plot_beta_bic(beta_true, beta_esti, res2$bic_n)
+      # plot_beta_bic(beta_true, esti_beta(res2$beta[,160], ref), res2$bic_n)
+      
+      fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
+      sparse_ass <- assess_sparse(beta_esti, beta_true)
+      temp[,ii] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR, res2$bic_n[res2$stop.index])
+      print(paste0("Stop.index = ", res2$stop.index))
+      print(paste0("BIC = ", res2$bic_n[res2$stop.index]))
+      print(paste0('i=',i,'; type=',j,'; ii=',ii,' done!'))
+    }
+    STOR[[i]][[j]] <- temp
   }
-  STOR[[i]] <- temp
-  print(paste0('i=',i,' done'))
 }
 
 

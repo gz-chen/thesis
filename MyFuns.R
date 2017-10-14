@@ -544,7 +544,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
 
 ######
 # Another version without generating gamma matrix
-gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.stop = 500){
+gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.stop = 300){
   svd_D <- function(A, b, rtol = 1e-7){
     # A function to calculate inv(t(D2[B_c,]))
     # A = t(D2[B_c,])
@@ -599,9 +599,9 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
   lambs[1] <- abs(U[i_hit,1])
   h[1] <- T
   df[1] <- n - temp$r
-  bic[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
+  # bic[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
   # bic_c2[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
-  bic_n[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1])
+  bic_n[1] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[1], 3)
   B <- c(B,B_c[i_hit]) # must hit
   
   # change <- list(new = D2[B_c[i_hit],], Prj = temp$Prj)
@@ -626,10 +626,10 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
     df[k] <- n - temp$r
     
     # decide when to quit loop based on BIC
-    if (df[k] == df[k-1]) {
-      bic[k] <- bic[k-1]
-    } else {
-      bic[k] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k], 3)
+    # if (df[k] == df[k-1]) {
+      # bic[k] <- bic[k-1]
+    # } else {
+      # bic[k] <- round(sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k], 3)
       # if (bic[k] > bic[k-1]) {
       #   # bic is increasing
       #   if (YELLOW == T) {
@@ -641,7 +641,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
       #   YELLOW <- F
       #   flag <- k
       # }
-    }
+    # }
     
     
     # hitting times
@@ -684,7 +684,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
       uhat[B_c] <- a - hit*b
       U[,k] <- uhat
       
-      bic_n[k] <- round(sum((t(D2) %*% uhat)^2) + log(n) * sig2 * df[k])
+      bic_n[k] <- round(sum((t(D2) %*% uhat)^2) + log(n) * sig2 * df[k],3)
       
       B <- c(B,B_c[i_hit])
       B_c <- B_c[-i_hit]
@@ -704,7 +704,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
       uhat[B_c] <- a - leave*b
       U[,k] <- uhat
       
-      bic_n[k] <- round(sum((t(D2) %*% uhat)^2) + log(n) * sig2 * df[k])
+      bic_n[k] <- round(sum((t(D2) %*% uhat)^2) + log(n) * sig2 * df[k],3)
       
       B_c <- c(B_c, B[i_leave])
       B <- B[-i_leave]
@@ -718,7 +718,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
     if (bic_n[k] > bic_n[k-1]) {
       # bic is increasing
       if (YELLOW == T) {
-        stop.index <- flag
+        # stop.index <- flag
         break
       } else YELLOW <- T
     } else if (bic_n[k] < bic_n[k-1]){
@@ -738,19 +738,17 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
   U <- U[,1:(k-1), drop = F]
   df <- df[1:(k-1)]
   h <- h[1:(k-1)]
-  bic <- bic[1:(k-1)]
+  # bic <- bic[1:(k-1)]
   # bic_c2 <- bic_c2[1:(k-1)]
   bic_n <- bic_n[1:(k-1)]
+  stop.index <- which.min(bic_n)
   
   fit <- y2 - t(D2) %*% U
   beta <- X_inv %*% fit
   
-  # sum((temp$Prj %*% y2)^2) + log(n) * sig2 * df[k]
-  bic_c <- colSums((c(y2) - fit)^2) + log(n) * sig2 * df
+  # bic_c <- colSums((c(y2) - fit)^2) + log(n) * sig2 * df
   
-  # stop.index <- which.min(bic_c)
-  
-  return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2, bic_c = bic_c, bic_n = bic_n,
+  return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2, bic_n = bic_n,
               U = U, df = df, h = h, bls = bls, bic = bic, stop.index = stop.index))
 }
 
