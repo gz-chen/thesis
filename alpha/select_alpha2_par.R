@@ -46,10 +46,10 @@ beta_true <- true_beta(phy, CLS, gma)
 # data prep. for pen. reg.
 ref <- 1
 
-alp.values <- seq(0, 1, by = 0.05)
+alp.values <- seq(0, 1, by = 0.5)
 # alp.values <- 0.26
-NN <- 300
-STOR <- list()
+NN <- 3
+# STOR <- list()
 pp <- length(alp.values)
 mtd <- c('myown','wang1')
 
@@ -69,13 +69,12 @@ STOR1 = foreach(i = 1:NN,
         .multicombine = TRUE,
         .options.snow = opts,
         .packages = c('geiger')) %dopar% {
-          
           Data <- gen_dat(n = 400, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
           stor <- list()
           for (j in 1:2){
             DW <- gen_D(phy, m = 2, weight = 'max', type = mtd[j])
+            temp <- matrix(nrow = 5, ncol = pp)
             for (ii in 1:pp) {
-              temp <- matrix(nrow = 5, ncol = pp)
               model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
               G_cen <- model.data$G_cen
               y_cen <- model.data$y_cen
