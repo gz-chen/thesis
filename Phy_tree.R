@@ -1,5 +1,6 @@
 setwd('/Users/gzchen/Documents/GitHub/thesis')
 source('MyFuns.R')
+
 ##########################
 ######generate tree#######
 
@@ -35,9 +36,9 @@ beta_true <- true_beta(phy, CLS, gma)
 ####################################################
 ## some checks for fun
 
-# lm1 <- lm(Data$y ~ Data$G + Data$Z)
+lm1 <- lm(Data$y ~ Data$G + Data$Z)
 # gma #true parameters
-# summary(lm1) #run lm to see whether it yields the coef and std. error and R.squared desired
+summary(lm1) #run lm to see whether it yields the coef and std. error and R.squared desired
 # 
 # lm2 <- lm(Data$y ~ Data$G + Data$X[,-1])
 # plot(lm2$coefficients) # no sparsity or fusion pattern shown
@@ -62,18 +63,18 @@ ref <- 1
 
 #generate data
 
-alp.values <- seq(0.2, 0.46,by = 0.02)
-NN <- 10
-STOR <- list()
-
-for (ii in 1:length(alp.values)) {
-  temp <- matrix(nrow = 4, ncol = NN)
-  for (i in 1:NN){
-    Data <- gen_dat(n = 300, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
-    model.data <- data_prep(Data, DW, ref, alp = alp.values[ii], normlz = F)
+# alp.values <- seq(0, 1,by = 0.05)
+# NN <- 10
+# STOR <- list()
+# 
+# for (ii in 1:length(alp.values)) {
+#   temp <- matrix(nrow = 4, ncol = NN)
+#   for (i in 1:NN){
+    Data <- gen_dat(n = 500, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
+    model.data <- data_prep(Data, DW, ref, alp = 0.26, normlz = F)
     
     G_cen <- model.data$G_cen
-    y_cen <- model.data$y_cen
+    y_cen <- c(model.data$y_cen)
     X_cen1 <- model.data$X_cen1
     D1 <- model.data$D1
     
@@ -90,21 +91,27 @@ for (ii in 1:length(alp.values)) {
     
     ## my own function
     
-    res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6)
+    res2 <- gen_select2(y_cen, X_cen1, D1, btol = 1e-6,maxsteps = 300)
     # res2$stop.index
     
     # summary of genlasso result
     beta_esti <- esti_beta(res2$beta[,res2$stop.index], ref)
-    # plot_beta_bic(beta_true, esti_beta(res2$beta[,160], ref), res2$bic)
-    # plot_beta_bic(beta_true, beta_esti, res2$bic)
+    # plot_beta_bic(beta_true, esti_beta(res2$beta[,20], ref), res2$bic)
+    plot_beta_bic(beta_true, beta_esti, res2$bic_n)
+    
     fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
     sparse_ass <- assess_sparse(beta_esti, beta_true)
     temp[,i] <- c(fuse_ass$nFPR, fuse_ass$nFNR, sparse_ass$FPR, sparse_ass$FNR)
     print(paste0('i=',i,' done'))
-  }
-  STOR[[ii]] <- temp
-  print(paste0('ii=',ii,' done'))
-}
+#   }
+#   STOR[[ii]] <- temp
+#   print(paste0('ii=',ii,' done'))
+# }
+
+    
+    
+    
+    
 
 ##########################################################################
 {

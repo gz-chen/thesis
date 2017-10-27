@@ -15,7 +15,7 @@ svdsolve <- function(A,b,rtol) {
   X_inv <- x$v %*% (t(x$u)/x$d)
   D2 <- D1 %*% X_inv
    
-  y = y2; D = D2; approx=FALSE; maxsteps=2000; minlam=0;
+  y = y2; D = D2; approx=FALSE; maxsteps=100; minlam=0;
   rtol=1e-7; btol=1e-7; verbose=FALSE; object=NULL;
   
   # If we are starting a new path
@@ -185,7 +185,7 @@ svdsolve <- function(A,b,rtol) {
                       k,leave,I[m-r],r))
         }
       }
-      if (k == 200) break
+      if (k == 100) break
       # Step counter
       k = k+1
     }

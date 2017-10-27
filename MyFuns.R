@@ -544,7 +544,7 @@ gen_select <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
 
 ######
 # Another version without generating gamma matrix
-gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.stop = 300){
+gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
   svd_D <- function(A, b, rtol = 1e-7){
     # A function to calculate inv(t(D2[B_c,]))
     # A = t(D2[B_c,])
@@ -556,7 +556,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
     d <- d[1:r]
     u <- svd.A$u[,1:r]; v <- svd.A$v[,1:r] # D_k <- u %*% d %*% t(v) is the condensed SVD
     
-    x <- v %*% ((t(u)/d) %*% b)
+    x <- v %*% (1/d * (t(u) %*% b))
     # inv <- v %*% (t(u)/d)
     Proj.D_k <- u %*% t(u)
     return(list(x = x, Prj = Proj.D_k, r = r))
@@ -573,7 +573,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
   y2 <- as.numeric(x$u %*% (t(x$u) %*% y))
   X_inv <- x$v %*% (t(x$u)/x$d)
   D2 <- D %*% X_inv
-  bls <- y2
+  bls <- c(y2)
   sig2 <- sum((y - y2)^2)/(n-p)
   
   # Intialize things to keep track of & return with
@@ -719,7 +719,7 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
       # bic is increasing
       if (YELLOW == T) {
         # stop.index <- flag
-        break
+        # break
       } else YELLOW <- T
     } else if (bic_n[k] < bic_n[k-1]){
       # bic is decreasing
@@ -729,7 +729,6 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
     
     
     k <- k + 1
-    if (k>k.stop) break
     if (!k%%30) print(k)
   }
   
@@ -751,6 +750,32 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000, k.st
   return(list(lambda = lambs, beta = beta, fit = fit, sig2 = sig2, bic_n = bic_n,
               U = U, df = df, h = h, bls = bls, bic = bic, stop.index = stop.index))
 }
+
+######
+
+#' a function to calculate the IC criterion
+#' 
+#' @param obj a genlasso object containing beta, fit, df, bls
+#' @param X the design matrix
+#' @param y the response vector
+#' @param type c('aic','bic','gic'), corresponding to 2, log(n), log(log(n))*log(n)
+#' @return IC the total IC calculated from y, X, beta, df
+IC <- function(obj, X, y, type = 'bic'){
+  n <- length(y)
+  sig2 <- sum((y - c(X %*% obj$bls))^2)/(n-p)
+  if (type == 'bic'){
+    IC <- colSums((y - X %*% obj$beta)^2) + log(n) * sig2 * obj$df
+  } else if (type == 'aic'){
+    IC <- colSums((y - X %*% obj$beta)^2) + 2 * sig2 * obj$df
+  } else if (type == 'gic'){
+    IC <- colSums((y - X %*% obj$beta)^2) + log(n) * log(log(n)) * sig2 * obj$df
+  } else {
+    stop('Not a valid IC type!')
+  }
+  return(IC)
+}
+
+
 
 
 

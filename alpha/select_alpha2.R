@@ -36,7 +36,7 @@ ref <- 1
 
 
 alp.values <- seq(0, 1, by = 0.05)
-NN <- 50
+NN <- 5
 STOR <- list()
 pp <- length(alp.values)
 mtd <- c('myown','wang1')

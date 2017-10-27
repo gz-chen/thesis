@@ -36,7 +36,7 @@ beta_true <- true_beta(phy, CLS, gma)
 #######generate penalty matrix & Data prep#######
 
 # generate penalty matrix
-DW <- gen_D(phy, m = 2, weight = 'max', type = 'myown')
+DW <- gen_D(phy, m = 2, weight = 'max', type = 'wang1')
 # data prep. for pen. reg.
 ref <- 1
 
@@ -64,7 +64,8 @@ for (i in 1:NN) {
   # model
   res <- gen_select(y_cen, X_cen1, D1, btol = 1e-6)
   # model result and assessment
-  beta_esti <- esti_beta(res$beta[,res$stop.index], ref) # plot_beta_bic(beta_true, beta_esti, res$bic)
+  beta_esti <- esti_beta(res$beta[,res$stop.index], ref) 
+  plot_beta_bic(beta_true, beta_esti, res$bic)
   fuse_ass <- assess_fuse(phy, beta_esti, beta_true)
   sparse_ass <- assess_sparse(beta_esti, beta_true)
   
@@ -110,7 +111,7 @@ for (i in 1:NN) {
     P_val.chi2 <- c(P_val.chi2, test_chi2(y_cen, P, res$sig2))
   }
   print(paste0('i=',i,'done'))
-  if (i == 1) break
+  if (i == 10) break
 }
 
 
