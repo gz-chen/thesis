@@ -39,7 +39,7 @@ for (ip in 1:length(P3)){
     #######generate penalty matrix & Data prep#######
     
     # generate penalty matrix
-    DW <- gen_D(phy, m = 2, weight = 'max', type = 'wang1')
+    DW <- gen_D(phy, m = 2, weight = 'max', type = 'myown')
     # data prep. for pen. reg.
     ref <- 1
   }
@@ -92,8 +92,8 @@ for (ip in 1:length(P3)){
       norms <- get_dir(y_cen, X_new, G_cen, type = 'interact')
       
       lr <- sqrt(norms$deg * res$sig2) 
-      V_up <- get_bound(y_cen, norms$eta, sd = lr, max = 10, upper = T)
-      V_lo <- get_bound(y_cen, norms$eta, sd = lr, max = 10, upper = F)
+      V_up <- get_bound(y_cen, norms$eta, sd = lr, max = 10, upper = T, verbose = T)
+      V_lo <- get_bound(y_cen, norms$eta, sd = lr, max = 10, upper = F, verbose = T)
       
       std <- sqrt(res$sig2)
       org <- norm.v(norms$eta)
