@@ -26,7 +26,7 @@ ln_par <- ln_param(phy)
 # generate parameters used for generating OTUs
 
 
-gma <- gen_gma(ln_par = ln_par, p1 = 0.02, p2 = 0.05, tree = phy, cls = CLS)
+gma <- gen_gma(ln_par = ln_par, p1 = 0.02, p2 = 0.05, tree = phy, cls = CLS, p3 = 0.03)
 # generate coefficients with given effect size
 
 
@@ -35,7 +35,7 @@ beta_true <- true_beta(phy, CLS, gma)
 
 ####################################################
 ## some checks for fun
-
+Data <- gen_dat(n = 500, ln_par = ln_par, gma = gma, tree = phy, cls = CLS, sig = 1)
 lm1 <- lm(Data$y ~ Data$G + Data$Z)
 # gma #true parameters
 summary(lm1) #run lm to see whether it yields the coef and std. error and R.squared desired

@@ -118,7 +118,29 @@ for (i in 1:NN) {
 # save.image('type1err.RData')
 
 
-
+###########################################
+#   # testing for single covariate
+#   etas <- ginv(X_new1)
+#   for (j in 2:ncol(X_new1)){
+#     eta <- etas[j,]
+#     if (beta_true[new_res$fused_OTU[[j]][1]] == 0) {
+#       P_val.norm.zero1 <- c(P_val.norm.zero1, test_norm(y_cen, res$gama, res$dd, eta, res$sig2, btol = 0))
+#       P_val.norm.zero2 <- c(P_val.norm.zero2, test_norm2(y_cen, eta, res$sig2))
+#     } else {
+#       P_val.norm.nonzero1 <- c(P_val.norm.nonzero1, test_norm(y_cen, res$gama, res$dd, eta, res$sig2, btol = 0))
+#       P_val.norm.nonzero2 <- c(P_val.norm.nonzero2, test_norm2(y_cen, eta, res$sig2))
+#     }
+#   }
+# 
+#   # testing for interaction terms
+#   Intact <- G_cen * X_new
+#   Intact_cen <- t(t(Intact) - colMeans(Intact))
+#   P <- proj.mat(Intact_cen) %*% (diag(length(y_cen)) - proj.mat(X_new1))
+# 
+#   P_val.chi1 <- c(P_val.chi1, test_chi(y_cen, res$gama, res$dd, P, res$sig2, btol = 0))
+#   P_val.chi2 <- c(P_val.chi2, test_chi2(y_cen, P, res$sig2))
+# }
+#############################################
 
 
 

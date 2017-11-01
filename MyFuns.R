@@ -86,10 +86,13 @@ gen_OTU <- function(ln_par, n){
 #' @param cls the associated clusters (denoted by internal node)
 #' 
 #' @param sig2 given variance of error term (as baseline)
+#' 
+#' @param p3 proportion explained by the interaction
 #' @return gma : regression coefficients
-gen_gma <- function(pi = 0.5, p1 = 0.02, ln_par, N = 10000, p2 = 0.05, tree, cls, sig2 = 1){
+gen_gma <- function(pi = 0.5, p1 = 0.02, ln_par, N = 10000, p2 = 0.05, tree, cls, sig2 = 1, p3 = 0){
+  p_t = p1 + p2 + p3
   var_G <- 2 * pi * (1-pi)
-  gma_G <- sqrt(p1*sig2/((1-p1-p2)*var_G))
+  gma_G <- sqrt(p1*sig2/((1-p_t)*var_G))
   
   # set.seed(1012)
   X <- gen_OTU(ln_par,N)
@@ -100,12 +103,20 @@ gen_gma <- function(pi = 0.5, p1 = 0.02, ln_par, N = 10000, p2 = 0.05, tree, cls
   }
   # define relative ratio of the OTU effects
   # ratio <- 1:length(cls) 
-  if(length(cls) %% 2) ratio <- c(setdiff(-floor(length(cls)/2):floor(length(cls)/2),0), ceiling(length(cls)/2)) else ratio <- setdiff(-floor(length(cls)/2):floor(length(cls)/2),0)
+  if(length(cls) %% 2) ratio <- c(setdiff(-floor(length(cls)/2):floor(length(cls)/2),0), ceiling(length(cls)/2)) else 
+    ratio <- setdiff(-floor(length(cls)/2):floor(length(cls)/2),0)
   var_M <- var(as.numeric(Z %*% ratio))
-  w <- sqrt(p2*sig2/((1-p1-p2)*var_M))
+  w <- sqrt(p2*sig2/((1-p_t)*var_M))
   gma_M <- w * as.vector(ratio)
   
-  return(list(gma_G = gma_G, gma_M = gma_M))
+  #interaction
+  G <- sample(x = c(0,1,2), size = N, replace = TRUE, prob = c(pi^2,2*pi*(1-pi),(1-pi)^2))
+  GZ <- G * Z
+  var_I <- var(as.numeric(GZ %*% ratio))
+  ww <- sqrt(p3*sig2/((1-p_t)*var_I))
+  gma_I <- ww * as.vector(ratio)
+  
+  return(list(gma_G = gma_G, gma_M = gma_M, gma_I = gma_I))
 }
 
 #####
@@ -140,14 +151,18 @@ true_beta <- function(tree,cls,gma){
 gen_dat <- function(n, pi = 0.5, ln_par, gma, tree, cls, sig = 1){
   G <- sample(x = c(0,1,2), size = n, replace = TRUE, prob = c(pi^2,2*pi*(1-pi),(1-pi)^2))
   X <- gen_OTU(ln_par,n)
-  Z <- matrix(NA, nrow = nrow(X),ncol = length(cls))
+  
+  Z <- matrix(NA, nrow = nrow(X), ncol = length(cls))
   for (i in 1:length(cls)){
     tip_i <- tips(tree,cls[i])
     Z[,i] <- rowSums(X[,tip_i])
   }
+  
+  GZ <- G * Z
   eps <- rnorm(n, 0, sig)
   
-  y <- G * gma$gma_G + Z %*% gma$gma_M + eps
+  y <- G * gma$gma_G + Z %*% gma$gma_M + GZ %*% gma$gma_I + eps
+  y <- c(y)
   return(list(G = G, X = X, Z = Z, y = y))
 }
 
@@ -219,6 +234,7 @@ data_prep <- function(Data, DW, ref, alp = 0, normlz = F){
   y_cen <- Data$y - mean(Data$y)
   X_cen <- t(t(Data$X) - colMeans(Data$X))
   X_cen1 <- X_cen[,-ref]
+  Z_cen <- t(t(Data$Z) - colMeans(Data$Z))
   D <- DW$D[,-ref]
   if (normlz) normalizer <- c(DW$Weights,NCOL(X_cen1)) else normalizer <- c(1,1)
   if (alp > 0 & alp < 1) {
@@ -227,7 +243,7 @@ data_prep <- function(Data, DW, ref, alp = 0, normlz = F){
     D1 <- diag(NCOL(X_cen1))
   } else D1 <- D
   return(list(y_cen = y_cen, X_cen = X_cen, G_cen = G_cen,
-              X_cen1 = X_cen1, D1 = D1))
+              X_cen1 = X_cen1, Z_cen = Z_cen, D1 = D1))
 }
 
 
@@ -239,20 +255,23 @@ data_prep <- function(Data, DW, ref, alp = 0, normlz = F){
 #' @param c_bic c('min','psi')
 #' @param dtol the tolerant level for decreasing in BIC
 #' @param svd whether to use SVD in genlasso
-#' @return genlasso object, stop index and bic values at each step
-select_OTU <- function(y, X, D, c_bic = 'min', dtol = 0.1, svd = F){
+#' @return genlasso object, stop.index, bic values at each step and sig2
+select_OTU <- function(y, X, D, maxsteps = 2000, svd = F){
   require(genlasso)
   # run genlasso
-  g_lasso <- genlasso(y, X, D, svd = svd)
+  g_lasso <- genlasso(y, X, D, maxsteps = maxsteps, svd = svd)
   # estimate sigma^2
   sig2 <- sum((g_lasso$y - X %*% g_lasso$bls)^2)/(NROW(X) - NCOL(X))
   # compute BIC
   bic <- colSums((g_lasso$y - g_lasso$fit)^2) + log(length(g_lasso$y)) * g_lasso$df * sig2
   bic <- as.vector(bic)
   # suggest which step to stop
-  bic_1 <- (bic[-1] - bic[-length(bic)]) > dtol
-  index <- ifelse(c_bic == 'min', which.min(bic), min(which(bic_1[-length(bic_1)] & bic_1[-1])))
-  return(list(g_lasso = g_lasso, stop_index = index, bic = bic))
+  index <- which.min(bic)
+  # add new elements to genlasso 
+  g_lasso$stop.index = index
+  g_lasso$bic = bic
+  g_lasso$sig2 = sig2
+  return(g_lasso)
 }
 
 #####
@@ -761,21 +780,39 @@ gen_select2 <- function(y, X, D, rtol = 1e-7, btol = 1e-7, maxsteps = 2000){
 #' @param type c('aic','bic','gic'), corresponding to 2, log(n), log(log(n))*log(n)
 #' @return IC the total IC calculated from y, X, beta, df
 IC <- function(obj, X, y, type = 'bic'){
-  n <- length(y)
-  sig2 <- sum((y - c(X %*% obj$bls))^2)/(n-p)
   if (type == 'bic'){
-    IC <- colSums((y - X %*% obj$beta)^2) + log(n) * sig2 * obj$df
+    IC <- colSums((y - X %*% obj$beta)^2) + log(n) * obj$sig2 * obj$df
   } else if (type == 'aic'){
-    IC <- colSums((y - X %*% obj$beta)^2) + 2 * sig2 * obj$df
+    IC <- colSums((y - X %*% obj$beta)^2) + 2 * obj$sig2 * obj$df
   } else if (type == 'gic'){
-    IC <- colSums((y - X %*% obj$beta)^2) + log(n) * log(log(n)) * sig2 * obj$df
+    IC <- colSums((y - X %*% obj$beta)^2) + log(n) * log(log(n)) * obj$sig2 * obj$df
   } else {
     stop('Not a valid IC type!')
   }
   return(IC)
 }
 
+######
 
+# form_new : form new covariates according to estimated beta's
+#' @param X_cen the (centered) design matrix (input of genlasso)
+#' @param beta_esti the estimated beta
+#' @param ref the reference level (whose coeff is 0)
+#' @param rdig the variance of beta_esti below this level (1e-rdig) would be treated as the same
+#' @return fused_OTU : a list with each element corresponds to the index of OTUs being fused
+#' @return X_new: the reformed OTUs
+form_new <- function(X_cen, beta_esti, rdig = 6, ref = 1){
+  approx_beta <- round(beta_esti, rdig)
+  level_beta <- unique(approx_beta)
+  
+  ref_new <- which(level_beta == approx_beta[ref])
+  X1 <- sapply(level_beta, FUN = function(x) rowSums(X_cen[,approx_beta == x,drop = F]))
+  X_new <- X1[,-ref_new]
+  
+  fused_OTU <- lapply(level_beta, FUN = function(x) sort(which(approx_beta == x)))
+  fused_OTU[[ref_new]] <- NULL
+  return(list(fused_OTU = fused_OTU, X_new = X_new))
+}
 
 
 
@@ -866,8 +903,155 @@ plot_beta_bic <- function(beta_true, beta_esti, bic){
 
 
 #####
+
 # esti_beta : recover the full coef vec from the reference-level omitted version
-esti_beta <- function(beta_est, ref) append(beta_est, 0, after = ref-1)
+
+esti_beta <- function(beta_est, ref = 1) append(beta_est, 0, after = ref-1)
+
+#####
+
+# get_dir : get the direction we're interested in
+#' @param y_cen the response
+#' @param X_new the reformed OTU
+#' @param G_cen the centrered genetic factor
+#' @param sig2 the sigma squared
+#' @param type c('single','interact')
+
+#' @return y_norm, eta_norm, test: if type == "interact", then eta_norm would be a single vector;
+#'          o./w. a matrix with each row corresponds to a OTU factor.
+#'          deg : the degree of freedom.
+
+get_dir <- function(y_cen, X_new, G_cen, type = 'interact'){
+  X_new1 <- cbind(G_cen,X_new)
+  # y_norm <- c(y_cen/sqrt(sig2))
+  if (type == 'interact'){
+    Intact <- G_cen * X_new # interaction terms
+    Intact_cen <- t(t(Intact) - colMeans(Intact)) # get each columns centered
+    rsd <- lsfit(X_new1, Intact_cen, intercept = F)$residuals # modulo the information over main effects
+    prj <- lsfit(rsd, y_cen, intercept = F) # projection onto interaction after modulo the main effects
+    eta <- c(rsd %*% prj$coef) 
+    # eta_norm <- eta / sqrt(sum(eta^2))
+    deg <- prj$qr$rank
+    test <- c(y_cen %*% eta)
+    return(list(eta = eta, test = test, deg = deg))
+  } else {
+    eta <- ginv(X_new1)[2:ncol(X_new1),]
+    # eta_norm <- apply(eta, 1, FUN = function(x) x/sqrt(sum(x^2)))
+    test <- c(eta %*% y_cen)
+    return(list(eta = eta, test = test))
+  }
+}
+
+
+######
+
+# get_bound : get the upper and lower bound along a certain direction
+#' @param y the response
+#' @param eta the direction we're interested in
+#' @param obj the objective; new_res$fused_OTU
+#' @param sd the initial learning rate
+#' @param stop stopping criterion; default to be 0.01 (relative change in estimated bound)
+#' @param max the max bound*sig expored, otherwise, set to be Inf
+#' @param upper the sign of the direction is positive or negative; default to be positive
+#' @return bnd the bnd for the test stat
+
+get_bound <- function(y, eta, sd, stop = 0.01, max = 10, upper = T, verbose = F){
+  dir <- eta/norm.v(eta)
+  bnd <- 0
+  s <- ifelse(upper, 1, -1)
+  lr <- sd
+  y_new <- y
+  while (abs(bnd) < max * sd){
+    y_new <- y_new + s * lr * dir
+    
+    atmpt <- select_OTU(y_new, X_cen1, D1)
+    atmpt_est <- esti_beta(atmpt$beta[,atmpt$stop.index])
+    if (verbose == T) plot_beta_bic(beta_true, atmpt_est, atmpt$bic)
+    atmpt_res <- form_new(model.data$X_cen, atmpt_est)
+    
+    if (setequal(atmpt_res$fused_OTU,new_res$fused_OTU)) {
+      bnd <- bnd + s * lr
+    } else {
+      y_new <- y_new - s * lr * dir
+      lr <- lr/2
+      if (lr < stop * sd) return(bnd)
+    }
+  }
+  bnd <- ifelse(upper, Inf, -Inf)
+  return(bnd)
+}
+
+######
+
+# trunc_test : run the truncated test based on the results of get_bound
+#' @param test the test statistic
+#' @param bnd A vector with two elements c(lower, upper)
+#' @param type can be chosen from c("norm", "chi")
+#' @param deg the degree of freedom for chi test
+#' @param side one-sided or two-sided test c('one','two')
+#' @return p-value
+
+trunc_test <- function(test, bnd, type = 'chi', deg = NULL, sig2 = NULL, side = 'one'){
+  if (type == 'chi'){
+    Test <- test / sig2
+    p_val <- diff(pchisq(c(Test,bnd[2]^2), df = deg))/diff(pchisq(bnd^2, df = deg))
+  } else {
+    temp1 <- ptruncnorm(test, bnd[1], bnd[2], 0, sig)
+    if (side == 'one'){
+      p_val <- min(temp1, 1 - temp1)
+    } else p_val <- 2*min(temp1, 1 - temp1)
+  }
+  return(p_val)
+}
+
+######
+
+# fool_test : use all the OTUs without selecting the OTUs
+#' @param data an object created by function data_prep
+#' @return p_values
+
+fool_test <- function(data){
+  y_cen <- data$y_cen
+  G_cen <- data$G_cen
+  X_cen1 <- data$X_cen1
+  GZ_cen <- cbind(G_cen, X_cen1)
+  
+  fit <- lm(y_cen ~ G_cen * X_cen1)
+  aov_res <- anova(fit)
+  p_val <- aov_res$`Pr(>F)`[3]
+  return(p_val)
+}
+
+#####
+
+# oracle_test : use the real associated OTU to do the testing
+#' @param data an object created by function data_prep
+#' @return p_values
+
+oracle_test <- function(data){
+  y_cen <- data$y_cen
+  G_cen <- data$G_cen
+  Z_cen <- data$Z_cen
+  GZ_cen <- cbind(G_cen, Z_cen)
+  
+  fit <- lm(y_cen ~ G_cen * Z_cen)
+  aov_res <- anova(fit)
+  p_val <- aov_res$`Pr(>F)`[3]
+  return(p_val)
+}
+
+# naive_test : use the selected OTU to do the testing but without truncation
+#' @param test the testing statistic
+#' @return p_values
+
+naive_test <- function(test, sig2 = NULL, deg = NULL){
+  Test <- test / sig2
+  p_val <- 1- pchisq(Test, df = deg)
+  return(p_val)
+}
+
+
+
 
 
 #####
@@ -884,27 +1068,31 @@ esti_beta <- function(beta_est, ref) append(beta_est, 0, after = ref-1)
 #' @return p-value if type == 'test'; OR a confidence interval if type == 'CI'
 test_norm <- function(y, Gama, dd, eta, sig2, type = 'test', lsig = 0.05, btol = 1e-7){
   # compute the lower and upper boundary
-  y <- c(y)
-  alp <- c(Gama %*% eta) / sum(eta^2)
-  temp <- (dd - Gama %*% y + alp * c(eta %*% y)) / alp
+  y_norm <- c(y)/sqrt(sig2) # with sd = 1
+  eta_norm <- eta / norm.v(eta)
+  alp <- c(Gama %*% eta_norm)
+  temp <- (dd - Gama %*% y_norm + alp * c(eta_norm %*% y_norm)) / alp
   V_up <- min(temp[alp > btol])
   V_lo <- max(temp[alp < -btol])
   if (V_lo >= V_up) return(99)
   # testing whether eta^t mu == 0
   require(truncnorm)
   if (type == 'test'){
-    temp1 <- ptruncnorm(eta %*% y, V_lo, V_up, 0, sqrt(sig2 * sum(eta^2)))
+    temp1 <- ptruncnorm(c(eta_norm %*% y_norm), V_lo, V_up, 0, 1)
     Test.stat <- 2 * min(temp1, 1 - temp1)
     return(Test.stat)
-  } else {
-    mu_tnorm <- function(mu) ptruncnorm(eta %*% y, V_lo, V_up, mu, sqrt(sig2 * sum(eta^2)))
-    U.search <- V_up # min(V_up, eta %*% y + 5 * sqrt(sig2))
-    L.search <- V_lo # min(V_lo, eta %*% y - 3 * sqrt(sig2 * sum(eta^2)))
-    CI_up <- uniroot(function(x) mu_tnorm(x) - lsig/2, c(L.search,U.search))$root
-    CI_lo <- uniroot(function(x) mu_tnorm(x) - (1-lsig/2), c(L.search,U.search))$root
-    return(c(CI_lo, CI_up))
-  }
+  } 
+  # else {
+  #   mu_tnorm <- function(mu) ptruncnorm(eta %*% y, V_lo, V_up, mu, sqrt(sig2 * sum(eta^2)))
+  #   U.search <- V_up # min(V_up, eta %*% y + 5 * sqrt(sig2))
+  #   L.search <- V_lo # min(V_lo, eta %*% y - 3 * sqrt(sig2 * sum(eta^2)))
+  #   CI_up <- uniroot(function(x) mu_tnorm(x) - lsig/2, c(L.search,U.search))$root
+  #   CI_lo <- uniroot(function(x) mu_tnorm(x) - (1-lsig/2), c(L.search,U.search))$root
+  #   return(c(CI_lo, CI_up))
+  # }
 }
+
+
 
 ######
 
@@ -928,15 +1116,15 @@ test_norm2 <- function(y, eta, sig2){
 #' @return the p-value
 
 test_chi <- function(y, Gama, dd, P, sig2, btol = 1e-7){
-  y <- c(y)
+  y_norm <- c(y)/sqrt(sig2)
   r <- sum(diag(P))
-  R <- P %*% y
-  R.norm <- sqrt(sum(R^2))
+  R <- P %*% y_norm
+  R.norm <- norm.v(R)
   u <- R/R.norm
-  v <- y - R
-  Test.stat <- R.norm/sqrt(sig2)
+  v <- y_norm - R
+  Test.stat <- R.norm
   
-  alp <- Gama %*% u * sqrt(sig2)
+  alp <- Gama %*% u
   temp <- (dd - Gama %*% v)/alp
   V_up <- min(temp[alp > btol])
   V_lo <- max(c(temp[alp < -btol],0))
@@ -970,6 +1158,6 @@ proj.mat <- function(A, rtol = 1e-7){
 }
 
 
-
+norm.v <- function(x) sqrt(sum(x^2))
 
 
