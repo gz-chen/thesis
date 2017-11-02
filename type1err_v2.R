@@ -45,15 +45,15 @@ for (ip in 1:length(P3)){
   }
   
   {
-    ################check selective type I error#####
-    NN <- 100
+    # initialize
+    NN <- 500
     correct <- 0
     chi_s<- NULL
     bounds <- NULL
   }
   
   # set.seed(as.numeric(Sys.time()))
-  set.seed(15)
+  
   for (i in 1:NN) {
     {
       # data
@@ -103,6 +103,7 @@ for (ip in 1:length(P3)){
       # truncation test:
       p_val2 <- trunc_test(test = norms$test, bnd = bnd, 
                            type = 'chi', deg = norms$deg, side = 'one', sig2 = res$sig2)
+      if( (p_val2 < 0) | is.nan(p_val2)) break
       bounds <- cbind(bounds, bnd)
       # oracle test use true model:
       p_val1 <- oracle_test(model.data)
@@ -115,6 +116,7 @@ for (ip in 1:length(P3)){
       correct <- correct + 1
     }
     cat('i=',i,'in ip=',ip,'done!\n')
+    cat('corrects=',correct,'\n')
   }
   RES[[ip]] = list(p_values = chi_s, bounds = bounds, corrects = correct)
 }
