@@ -5,7 +5,7 @@ source('MyFuns.R')
 
 
 RES <- NULL
-P3 <- c(0,0.01,0.03,0.05)
+P3 <- c(0,0.01,0.03)
 
 for (ip in 1:length(P3)){
   {
@@ -22,7 +22,7 @@ for (ip in 1:length(P3)){
     asso_tips <- plot_tree(phy, cls = CLS)
     
     ############################################
-    ################generate simu data###############
+    ################generate simu data##########
     
     ln_par <- ln_param(phy)
     # generate parameters used for generating OTUs
@@ -46,7 +46,7 @@ for (ip in 1:length(P3)){
   
   {
     ################check selective type I error#####
-    NN <- 300
+    NN <- 100
     correct <- 0
     chi_s<- NULL
     bounds <- NULL
